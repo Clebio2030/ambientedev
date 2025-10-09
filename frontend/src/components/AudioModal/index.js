@@ -212,36 +212,20 @@ const AudioModal = ({ url, message, disableTranscription = false }) => {
         )}
       </div>
 
-      {/* ✅ ÚNICA MUDANÇA: Container de controles com botão centralizado */}
+      {/* Botão de transcrição removido - usar apenas pelo menu de contexto */}
       <div className={classes.controlsContainer}>
-        {!disableTranscription && (
+        {!disableTranscription && transcription && (
           <div className={classes.transcriptionContainer}>
-            {!transcrito ? (
-              transcription ? (
-                <Typography className={classes.transcriptionText} variant="body2">
-                  <strong>Transcrição:</strong> {transcription}
-                </Typography>
-              ) : (
-                <Button
-                  onClick={handleTranscribe}
-                  variant="contained"
-                  className={classes.transcribeButton}
-                  disabled={isTranscribing}
-                  style={{
-                    backgroundColor: isTranscribing
-                      ? "#ccc"
-                      : theme.palette.primary.main,
-                    color: "#fff",
-                  }}
-                >
-                  {isTranscribing ? "Transcrevendo..." : "Transcrever"}
-                </Button>
-              )
-            ) : (
-              <Typography className={classes.transcriptionText} variant="body2">
-                <strong>Transcrição:</strong> {body}
-              </Typography>
-            )}
+            <Typography className={classes.transcriptionText} variant="body2">
+              <strong>Transcrição:</strong> {transcription}
+            </Typography>
+          </div>
+        )}
+        {!disableTranscription && transcrito && (
+          <div className={classes.transcriptionContainer}>
+            <Typography className={classes.transcriptionText} variant="body2">
+              <strong>Transcrição:</strong> {body}
+            </Typography>
           </div>
         )}
       </div>

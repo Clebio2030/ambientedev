@@ -1850,6 +1850,7 @@ const messages = {
         forward: "Encaminhar",
         toForward: "Encaminhar",
         talkTo: "Conversar Com",
+        transcription: "Transcrever Áudio",
         confirmationModal: {
           title: "Apagar mensagem?",
           message: "Esta ação não pode ser revertida.",
