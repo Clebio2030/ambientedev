@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+  import React, { useState, useContext } from "react";
 
 import MenuItem from "@material-ui/core/MenuItem";
 
@@ -17,7 +17,7 @@ import { TicketsContext } from "../../context/Tickets/TicketsContext";
 import toastError from "../../errors/toastError";
 import { useHistory } from "react-router-dom";
 import { AuthContext } from "../../context/Auth/AuthContext";
-import ForwardModal from "../../components/ForwardMessageModal";
+import ForwardModal from "../ForwardMessageModal";
 import ShowTicketOpen from "../ShowTicketOpenModal";
 import AcceptTicketWithoutQueue from "../AcceptTicketWithoutQueueModal";
 
@@ -251,9 +251,9 @@ const MessageOptionsMenu = ({
         <MenuItem onClick={handleSetShowSelectCheckbox}>
           {i18n.t("messageOptionsMenu.forward")}
         </MenuItem>
-        {!message.fromMe && message.mediaType === "audio" && (
+        {(message.mediaType === "audio" && !message.fromMe) && (
           <MenuItem onClick={handleTranscriptionAudioToText}>
-            {i18n.t("messageOptionsMenu.transcription")}
+            {i18n.t("Transcrever áudio")}
           </MenuItem>
         )}
         {!message.fromMe && isGroup && (
