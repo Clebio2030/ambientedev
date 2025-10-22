@@ -72,6 +72,12 @@ export async function checkAndDedup(
     return;
   }
 
+  // Evitar que o contato seja comparado consigo mesmo
+  if (lidContact.id === contact.id) {
+    console.log(`[RDS CONTATO] Contato ${contact.id} é o mesmo contato encontrado, pulando deduplicação`);
+    return;
+  }
+
   console.log(`[RDS CONTATO] Contato duplicado encontrado: ${lidContact.id} (${lidContact.number}) - iniciando consolidação`);
 
   await Message.update(
