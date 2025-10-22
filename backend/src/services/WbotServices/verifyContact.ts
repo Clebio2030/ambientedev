@@ -172,7 +172,7 @@ export async function verifyContact(
         try {
           const ow = await wbot.onWhatsApp(msgContact.id);
           if (ow?.[0]?.exists) {
-            const lid = ow?.[0]?.lid as string;
+            const lid = ow?.[0]?.jid as string;
             if (lid) {
               await checkAndDedup(foundContact, lid);
               await WhatsappLidMap.create({
@@ -201,7 +201,7 @@ export async function verifyContact(
           // Ao invés de lançar erro, vamos simplesmente criar o contato
           return CreateOrUpdateContactService(contactData);
         }
-        const lid = ow?.[0]?.lid as string;
+        const lid = ow?.[0]?.jid as string;
 
         if (lid) {
           const lidContact = await Contact.findOne({

@@ -10,9 +10,11 @@ const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
   "pre-key": "preKeys",
   session: "sessions",
   "sender-key": "senderKeys",
+  "sender-key-memory": "senderKeyMemory",
   "app-state-sync-key": "appStateSyncKeys",
   "app-state-sync-version": "appStateVersions",
-  "sender-key-memory": "senderKeyMemory"
+  "lid-mapping": "lidMappings",
+  "device-list": "deviceLists"
 };
 
 const authState = async (

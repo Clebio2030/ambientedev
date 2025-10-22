@@ -97,6 +97,24 @@ import * as XLSX from "xlsx";
 import { ENABLE_LID_DEBUG } from "../../config/debug";
 import { normalizeJid } from "../../utils";
 import { handleOpenAiFlow } from "../IntegrationsServices/OpenAiService";
+
+// Função auxiliar para validar JID antes de chamar sendPresenceUpdate
+const isValidJid = (jid: string | undefined): boolean => {
+  if (!jid) return false;
+  const normalizedJid = normalizeJid(jid);
+  return normalizedJid.includes('@s.whatsapp.net') || normalizedJid.includes('@g.us');
+};
+
+// Função auxiliar para chamar sendPresenceUpdate com validação
+const safeSendPresenceUpdate = (wbot: any, presence: string, jid: string | undefined) => {
+  if (isValidJid(jid)) {
+    try {
+      wbot.sendPresenceUpdate(presence, jid);
+    } catch (error) {
+      console.log(`Erro ao enviar presence update para ${jid}:`, error);
+    }
+  }
+};
 import { IOpenAi } from "../../@types/openai";
 import WhatsappLidMap from "../../models/WhatsapplidMap";
 import { getJidOf } from "./getJidOf";
@@ -724,7 +742,7 @@ const downloadMedia = async (
   let buffer;
   try {
     buffer = await downloadMediaMessage(
-      msg,
+      msg as any,
       "buffer",
       {},
       {
@@ -1199,7 +1217,7 @@ const sendDialogflowAwswer = async (
   );
 
   if (!dialogFlowReply) {
-    wbot.sendPresenceUpdate("composing", contact.remoteJid);
+    safeSendPresenceUpdate(wbot, "composing", contact.remoteJid);
 
     const bodyDuvida = formatBody(
       `\u200e *${queueIntegration?.name}:* Não consegui entender sua dúvida.`
@@ -1207,7 +1225,7 @@ const sendDialogflowAwswer = async (
 
     await delay(1000);
 
-    await wbot.sendPresenceUpdate("paused", contact.remoteJid);
+    await safeSendPresenceUpdate(wbot, "paused", contact.remoteJid);
 
     const sentMessage = await wbot.sendMessage(getJidOf(ticket.contact), {
       text: bodyDuvida
@@ -1230,7 +1248,7 @@ const sendDialogflowAwswer = async (
 
   const audio = dialogFlowReply.encodedAudio.toString("base64") ?? undefined;
 
-  wbot.sendPresenceUpdate("composing", contact.remoteJid);
+  safeSendPresenceUpdate(wbot, "composing", contact.remoteJid);
   await delay(500);
 
   let lastMessage;
@@ -1284,9 +1302,9 @@ async function sendDelayedMessages(
   await verifyMessage(sentMessage, ticket, contact);
   if (message != lastMessage) {
     await delay(500);
-    wbot.sendPresenceUpdate("composing", contact.remoteJid);
+    safeSendPresenceUpdate(wbot, "composing", contact.remoteJid);
   } else if (audio) {
-    wbot.sendPresenceUpdate("recording", contact.remoteJid);
+    safeSendPresenceUpdate(wbot, "recording", contact.remoteJid);
     await delay(500);
 
     // if (audio && message === lastMessage) {
@@ -1992,7 +2010,7 @@ const verifyQueue = async (
 
       let options = "";
 
-      wbot.sendPresenceUpdate("composing", contact.remoteJid);
+      safeSendPresenceUpdate(wbot, "composing", contact.remoteJid);
 
       queues.forEach((queue, index) => {
         options += `*[ ${index + 1} ]* - ${queue.name}\n`;
@@ -2008,7 +2026,7 @@ const verifyQueue = async (
 
       await delay(1000);
 
-      await wbot.sendPresenceUpdate("paused", contact.remoteJid);
+      await safeSendPresenceUpdate(wbot, "paused", contact.remoteJid);
 
       if (ticket.whatsapp.greetingMediaAttachment !== null) {
         const filePath = path.resolve(
@@ -3010,7 +3028,7 @@ export const handleMessageIntegration = async (
         await sendDialogflowAwswer(
           wbot,
           ticket,
-          msg,
+          msg as any,
           ticket.contact,
           inputAudio,
           companyId,
@@ -4882,7 +4900,7 @@ const wbotMessageListener = (wbot: Session, companyId: number): void => {
             }
           );
         } else {
-          handleMsgAck(message, 2);
+          handleMsgAck(message as any, 2);
         }
       }
     });
