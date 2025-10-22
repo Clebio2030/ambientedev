@@ -56,6 +56,8 @@ export async function checkAndDedup(
   contact: Contact,
   lid: string
 ): Promise<void> {
+  console.log(`[RDS CONTATO] Verificando duplicação para contato ${contact.id} (${contact.number}) com LID ${lid}`);
+  
   const lidContact = await Contact.findOne({
     where: {
       companyId: contact.companyId,
@@ -66,8 +68,11 @@ export async function checkAndDedup(
   });
 
   if (!lidContact) {
+    console.log(`[RDS CONTATO] Nenhum contato duplicado encontrado para LID ${lid}`);
     return;
   }
+
+  console.log(`[RDS CONTATO] Contato duplicado encontrado: ${lidContact.id} (${lidContact.number}) - iniciando consolidação`);
 
   await Message.update(
     { contactId: contact.id },
@@ -108,6 +113,7 @@ export async function checkAndDedup(
     }
   );
 
+  console.log(`[RDS CONTATO] Deletando contato duplicado: ${lidContact.id} (${lidContact.number}) para consolidar com contato ${contact.id} (${contact.number})`);
   await lidContact.destroy();
 }
 
