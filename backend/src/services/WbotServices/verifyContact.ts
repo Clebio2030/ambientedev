@@ -16,14 +16,18 @@ const lidUpdateMutex = new Mutex();
 // Função auxiliar para criar mapeamento LID de forma segura
 const createLidMappingSafely = async (companyId: number, lid: string, contactId: number) => {
   try {
+    console.log(`[RDS CONTATO] Tentando criar mapeamento LID para contato ${contactId} com LID ${lid}`);
+    
     // Verificar se o contato ainda existe antes de criar o mapeamento
     const contactExists = await Contact.findByPk(contactId);
     if (contactExists) {
+      console.log(`[RDS CONTATO] Contato ${contactId} encontrado, criando mapeamento LID`);
       await WhatsappLidMap.create({
         companyId,
         lid,
         contactId
       });
+      console.log(`[RDS CONTATO] Mapeamento LID criado com sucesso para contato ${contactId}`);
       return true;
     } else {
       console.log(`[RDS CONTATO] Contato ${contactId} não encontrado na base de dados, pulando criação de mapeamento LID`);
