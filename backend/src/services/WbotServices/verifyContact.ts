@@ -13,6 +13,28 @@ import GetProfilePicUrl from "./GetProfilePicUrl";
 
 const lidUpdateMutex = new Mutex();
 
+// Função auxiliar para criar mapeamento LID de forma segura
+const createLidMappingSafely = async (companyId: number, lid: string, contactId: number) => {
+  try {
+    // Verificar se o contato ainda existe antes de criar o mapeamento
+    const contactExists = await Contact.findByPk(contactId);
+    if (contactExists) {
+      await WhatsappLidMap.create({
+        companyId,
+        lid,
+        contactId
+      });
+      return true;
+    } else {
+      console.log(`[RDS CONTATO] Contato ${contactId} não encontrado na base de dados, pulando criação de mapeamento LID`);
+      return false;
+    }
+  } catch (error) {
+    console.log(`[RDS CONTATO] Erro ao criar mapeamento LID para contato ${contactId}:`, error);
+    return false;
+  }
+};
+
 export type Session = WASocket & {
   id?: number;
   myJid?: string;
@@ -173,13 +195,10 @@ export async function verifyContact(
           const ow = await wbot.onWhatsApp(msgContact.id);
           if (ow?.[0]?.exists) {
             const lid = ow?.[0]?.jid as string;
-            if (lid) {
+            if (lid && foundContact.id) {
               await checkAndDedup(foundContact, lid);
-              await WhatsappLidMap.create({
-                companyId,
-                lid,
-                contactId: foundContact.id
-              });
+              
+              await createLidMappingSafely(companyId, lid, foundContact.id);
             }
           } else {
             // Contato não existe no WhatsApp, mas vamos continuar mesmo assim
@@ -214,12 +233,8 @@ export async function verifyContact(
             include: ["tags", "extraInfo"]
           });
 
-          if (lidContact) {
-            await WhatsappLidMap.create({
-              companyId,
-              lid,
-              contactId: lidContact.id
-            });
+          if (lidContact && lidContact.id) {
+            await createLidMappingSafely(companyId, lid, lidContact.id);
             return updateContact(lidContact, {
               number: contactData.number,
               profilePicUrl: contactData.profilePicUrl
