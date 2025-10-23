@@ -450,7 +450,7 @@ const getSenderMessage = (
 
 const normalizeContactIdentifier = (msg: proto.IWebMessageInfo): string => {
   // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
-  const jid = msg.key.lid || msg.key.remoteJid;
+  const jid = (msg.key as any).remoteJidAlt || msg.key.remoteJid;
   return normalizeJid(jid);
 };
 
@@ -459,10 +459,10 @@ const getContactMessage = async (msg: proto.IWebMessageInfo, wbot: Session) => {
   const rawNumber = msg.key.remoteJid.replace(/\D/g, "");
 
   // ✅ CORREÇÃO: Usar LID quando disponível para identificação correta do contato
-  const contactId = msg.key.lid || msg.key.remoteJid;
+  const contactId = (msg.key as any).remoteJidAlt || msg.key.remoteJid;
 
   if (ENABLE_LID_DEBUG) {
-    logger.info(`[LID-DEBUG] getContactMessage - msg.key.lid: ${msg.key.lid}`);
+    logger.info(`[LID-DEBUG] getContactMessage - msg.key.remoteJidAlt: ${(msg.key as any).remoteJidAlt}`);
     logger.info(`[LID-DEBUG] getContactMessage - msg.key.remoteJid: ${msg.key.remoteJid}`);
     logger.info(`[LID-DEBUG] getContactMessage - contactId usado: ${contactId}`);
   }
@@ -835,7 +835,7 @@ export const verifyMediaMessage = async (
         quotedMsgId: quotedMsg?.id || msg.message?.reactionMessage?.key?.id,
         ack: msg.status,
         companyId: companyId,
-        remoteJid: msg.key.lid || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
+        remoteJid: (msg.key as any).remoteJidAlt || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
         participant: msg.key.participant,
         timestamp: getTimestampMessage(msg.messageTimestamp),
         createdAt: new Date(
@@ -987,7 +987,7 @@ export const verifyMediaMessage = async (
         Number(
           String(msg.status).replace("PENDING", "2").replace("NaN", "1")
         ) || 2,
-      remoteJid: msg.key.lid || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
+      remoteJid: (msg.key as any).remoteJidAlt || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
       participant: msg.key.participant,
       dataJson: JSON.stringify(msg),
       ticketTrakingId: ticketTraking?.id,
@@ -1093,7 +1093,7 @@ export const verifyMessage = async (
     ack:
       Number(String(msg.status).replace("PENDING", "2").replace("NaN", "1")) ||
       2,
-    remoteJid: msg.key.lid || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
+    remoteJid: (msg.key as any).remoteJidAlt || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
     participant: msg.key.participant,
     dataJson: JSON.stringify(msg),
     ticketTrakingId: ticketTraking?.id,

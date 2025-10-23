@@ -171,8 +171,9 @@ export async function verifyContact(
   const isLid = msgContact.id.includes("@lid");
   const isGroup = msgContact.id.includes("@g.us");
 
+  // ✅ CORREÇÃO: Para LIDs, extrair apenas o número para o campo number
   const number = isLid
-    ? msgContact.id
+    ? msgContact.id.substring(0, msgContact.id.indexOf("@"))
     : msgContact.id.substring(0, msgContact.id.indexOf("@"));
 
   const contactData = {
@@ -181,8 +182,8 @@ export async function verifyContact(
     profilePicUrl,
     isGroup: msgContact.id.includes("g.us"),
     companyId,
-    lid: isLid ? msgContact.id : "", // ✅ CORREÇÃO: Passar o LID quando disponível
-    remoteJid: msgContact.id // ✅ CORREÇÃO: Passar o remoteJid também
+    lid: isLid ? msgContact.id : "", // ✅ CORREÇÃO: Passar o LID completo quando disponível
+    remoteJid: isLid ? msgContact.id : msgContact.id // ✅ CORREÇÃO: Usar LID diretamente para remoteJid
   };
 
   if (isGroup) {
@@ -190,18 +191,41 @@ export async function verifyContact(
   }
 
   return lidUpdateMutex.runExclusive(async () => {
+    // ✅ CORREÇÃO: Para LIDs, tentar encontrar o PN correspondente usando o store interno do Baileys
+    let searchNumber = number;
+    if (isLid) {
+      try {
+        // Tentar obter o PN correspondente ao LID usando o store interno
+        const store = (wbot as any).signalRepository?.lidMapping;
+        if (store && typeof store.getPNForLID === 'function') {
+          const pn = await store.getPNForLID(msgContact.id);
+          if (pn) {
+            searchNumber = pn.substring(0, pn.indexOf("@"));
+            if (ENABLE_LID_DEBUG) {
+              console.log(`[LID-DEBUG] verifyContact - LID ${msgContact.id} mapeado para PN ${pn}, usando número ${searchNumber}`);
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`[LID-DEBUG] verifyContact - Erro ao obter PN para LID ${msgContact.id}:`, error);
+      }
+    }
+
     const foundContact = await Contact.findOne({
       where: {
         companyId,
-        number
+        number: searchNumber
       },
       include: ["tags", "extraInfo", "whatsappLidMap"]
     });
 
     if (isLid) {
       if (foundContact) {
+        // ✅ CORREÇÃO: Atualizar o contato existente com o LID
         return updateContact(foundContact, {
-          profilePicUrl: contactData.profilePicUrl
+          profilePicUrl: contactData.profilePicUrl,
+          lid: contactData.lid,
+          remoteJid: contactData.remoteJid
         });
       }
 

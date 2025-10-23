@@ -51,21 +51,37 @@ const SendWhatsAppMessage = async ({
         logger.info(`[LID-DEBUG] SendMessage - Extraindo LID puro do remoteJid: ${jid}`);
       }
     } else {
-      // Fallback para JID tradicional se não conseguir extrair o LID
+      // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+      if (contactNumber.remoteJid && contactNumber.remoteJid.includes('@lid')) {
+        jid = contactNumber.remoteJid;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMessage - Usando remoteJid LID diretamente: ${jid}`);
+        }
+      } else {
+        // Fallback para JID tradicional se não conseguir extrair o LID
+        const cleanNumber = contactNumber.number.replace(/@.*$/, '');
+        jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+        jid = normalizeJid(jid);
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMessage - Fallback para JID tradicional: ${jid}`);
+        }
+      }
+    }
+  } else {
+    // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+    if (contactNumber.remoteJid && contactNumber.remoteJid.includes('@lid')) {
+      jid = contactNumber.remoteJid;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMessage - Usando remoteJid LID diretamente: ${jid}`);
+      }
+    } else {
+      // Fallback para JID tradicional quando não há LID
       const cleanNumber = contactNumber.number.replace(/@.*$/, '');
       jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
       jid = normalizeJid(jid);
       if (ENABLE_LID_DEBUG) {
-        logger.info(`[LID-DEBUG] SendMessage - Fallback para JID tradicional: ${jid}`);
+        logger.info(`[LID-DEBUG] SendMessage - Usando JID tradicional: ${jid}`);
       }
-    }
-  } else {
-    // Fallback para JID tradicional quando não há LID
-    const cleanNumber = contactNumber.number.replace(/@.*$/, '');
-    jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
-    jid = normalizeJid(jid);
-    if (ENABLE_LID_DEBUG) {
-      logger.info(`[LID-DEBUG] SendMessage - Usando JID tradicional: ${jid}`);
     }
   }
 
