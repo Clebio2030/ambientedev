@@ -20,19 +20,38 @@ const createLidMappingSafely = async (companyId: number, lid: string, contactId:
     
     // Verificar se o contato ainda existe antes de criar o mapeamento
     const contactExists = await Contact.findByPk(contactId);
-    if (contactExists) {
-      console.log(`[RDS CONTATO] Contato ${contactId} encontrado, criando mapeamento LID`);
-      await WhatsappLidMap.create({
-        companyId,
-        lid,
-        contactId
-      });
-      console.log(`[RDS CONTATO] Mapeamento LID criado com sucesso para contato ${contactId}`);
-      return true;
-    } else {
+    if (!contactExists) {
       console.log(`[RDS CONTATO] Contato ${contactId} não encontrado na base de dados, pulando criação de mapeamento LID`);
       return false;
     }
+
+    // Usar findOrCreate para evitar problemas de concorrência
+    const [mapping, created] = await WhatsappLidMap.findOrCreate({
+      where: {
+        companyId,
+        lid
+      },
+      defaults: {
+        companyId,
+        lid,
+        contactId
+      }
+    });
+
+    if (created) {
+      console.log(`[RDS CONTATO] Novo mapeamento LID criado com sucesso para contato ${contactId}`);
+    } else {
+      // Se o mapeamento já existia, atualizar o contactId se necessário
+      if (mapping.contactId !== contactId) {
+        console.log(`[RDS CONTATO] Mapeamento LID já existe para LID ${lid} na empresa ${companyId}, atualizando contactId de ${mapping.contactId} para ${contactId}`);
+        await mapping.update({ contactId });
+        console.log(`[RDS CONTATO] Mapeamento LID atualizado com sucesso para contato ${contactId}`);
+      } else {
+        console.log(`[RDS CONTATO] Mapeamento LID já existe e está correto para contato ${contactId}`);
+      }
+    }
+
+    return true;
   } catch (error) {
     console.log(`[RDS CONTATO] Erro ao criar mapeamento LID para contato ${contactId}:`, error);
     return false;
@@ -58,12 +77,25 @@ export async function checkAndDedup(
 ): Promise<void> {
   console.log(`[RDS CONTATO] Verificando duplicação para contato ${contact.id} (${contact.number}) com LID ${lid}`);
   
+  // ✅ CORREÇÃO: Buscar contatos duplicados considerando diferentes formatos de número
+  const lidNumber = lid.substring(0, lid.indexOf("@"));
+  
   const lidContact = await Contact.findOne({
     where: {
       companyId: contact.companyId,
-      number: {
-        [Op.or]: [lid, lid.substring(0, lid.indexOf("@"))]
-      }
+      [Op.or]: [
+        // Buscar por LID exato
+        { number: lid },
+        // Buscar por número puro do LID
+        { number: lidNumber },
+        // Buscar por LID no campo lid
+        { lid: lid },
+        // Buscar por número puro no campo lid
+        { lid: `${lidNumber}@lid` },
+        // Buscar por número puro em diferentes formatos
+        { number: `${lidNumber}@s.whatsapp.net` },
+        { number: `${lidNumber}@lid@s.whatsapp.net` }
+      ]
     }
   });
 
@@ -148,7 +180,9 @@ export async function verifyContact(
     number,
     profilePicUrl,
     isGroup: msgContact.id.includes("g.us"),
-    companyId
+    companyId,
+    lid: isLid ? msgContact.id : "", // ✅ CORREÇÃO: Passar o LID quando disponível
+    remoteJid: msgContact.id // ✅ CORREÇÃO: Passar o remoteJid também
   };
 
   if (isGroup) {

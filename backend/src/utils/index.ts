@@ -1,5 +1,5 @@
 // Utilitário para normalizar JIDs do WhatsApp
-// Se vier com @lid, converte para @s.whatsapp.net (usuário) ou @g.us (grupo)
+// ✅ CORREÇÃO: Segundo Baileys v7.0.0, LIDs devem ser usados diretamente, não convertidos
 
 export function normalizeJid(jid: string): string {
   if (!jid) return jid;
@@ -12,17 +12,16 @@ export function normalizeJid(jid: string): string {
     return jid.replace('@g.us@g.us', '@g.us');
   }
 
+  // ✅ CORREÇÃO: LIDs devem ser mantidos como estão, não convertidos
+  if (jid.includes('@lid')) {
+    return jid; // Retornar LID sem modificação
+  }
+
   // Se já contém @s.whatsapp.net ou @g.us, retorna o próprio jid
   if (jid.includes('@s.whatsapp.net') || jid.includes('@g.us')) {
     return jid;
   }
 
-  if (jid.includes('@lid')) {
-    const base = jid.split('@')[0];
-    if (base.length > 15 || jid.includes('g.us')) {
-      return base + '@g.us';
-    }
-    return base + '@s.whatsapp.net';
-  }
-  return jid;
+  // Para números sem sufixo, adicionar @s.whatsapp.net
+  return jid + '@s.whatsapp.net';
 } 

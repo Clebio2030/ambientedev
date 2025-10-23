@@ -35,15 +35,51 @@ const SendWhatsAppMessage = async ({
     throw new AppError("Contato do ticket não encontrado");
   }
 
-  // Sempre envie para o JID tradicional
-  let jid = `${contactNumber.number}@${
-    ticket.isGroup ? "g.us" : "s.whatsapp.net"
-  }`;
+  // ✅ CORREÇÃO: Usar LID quando disponível para evitar erro Bad MAC
+  let jid;
+  if (contactNumber.lid && contactNumber.lid !== "") {
+    jid = contactNumber.lid;
+    if (ENABLE_LID_DEBUG) {
+      logger.info(`[LID-DEBUG] SendMessage - Usando LID do campo lid: ${jid}`);
+    }
+  } else if (contactNumber.remoteJid && contactNumber.remoteJid.includes("@lid")) {
+    // Extrair apenas o LID puro do remoteJid malformado
+    const lidMatch = contactNumber.remoteJid.match(/^(\d+)@lid/);
+    if (lidMatch) {
+      jid = `${lidMatch[1]}@lid`;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMessage - Extraindo LID puro do remoteJid: ${jid}`);
+      }
+    } else {
+      // Fallback para JID tradicional se não conseguir extrair o LID
+      const cleanNumber = contactNumber.number.replace(/@.*$/, '');
+      jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+      jid = normalizeJid(jid);
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMessage - Fallback para JID tradicional: ${jid}`);
+      }
+    }
+  } else {
+    // Fallback para JID tradicional quando não há LID
+    const cleanNumber = contactNumber.number.replace(/@.*$/, '');
+    jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+    jid = normalizeJid(jid);
+    if (ENABLE_LID_DEBUG) {
+      logger.info(`[LID-DEBUG] SendMessage - Usando JID tradicional: ${jid}`);
+    }
+  }
+
+  if (ENABLE_LID_DEBUG) {
+    logger.info(`[LID-DEBUG] SendMessage - JID ANTES DO normalizeJid: ${jid}`);
+  }
+
+  // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
   jid = normalizeJid(jid);
 
   if (ENABLE_LID_DEBUG) {
+    logger.info(`[LID-DEBUG] SendMessage - JID DEPOIS DO normalizeJid: ${jid}`);
     logger.info(
-      `[LID-DEBUG] SendMessage - Enviando para JID tradicional: ${jid}`
+      `[LID-DEBUG] SendMessage - JID FINAL ANTES DO ENVIO: ${jid}`
     );
     logger.info(`[LID-DEBUG] SendMessage - Contact lid: ${contactNumber.lid}`);
     logger.info(
@@ -51,6 +87,9 @@ const SendWhatsAppMessage = async ({
     );
     logger.info(
       `[LID-DEBUG] SendMessage - QuotedMsg: ${quotedMsg ? "SIM" : "NÃO"}`
+    );
+    logger.info(
+      `[LID-DEBUG] SendMessage - JID includes @lid: ${jid.includes('@lid')}`
     );
   }
 
@@ -131,6 +170,11 @@ const SendWhatsAppMessage = async ({
   }
   try {
     await delay(msdelay);
+    
+    if (ENABLE_LID_DEBUG) {
+      logger.info(`[LID-DEBUG] SendMessage - JID IMEDIATAMENTE ANTES DO wbot.sendMessage: ${jid}`);
+    }
+    
     const sentMessage = await wbot.sendMessage(
       jid,
       {

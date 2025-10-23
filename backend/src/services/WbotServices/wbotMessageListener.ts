@@ -101,8 +101,9 @@ import { handleOpenAiFlow } from "../IntegrationsServices/OpenAiService";
 // Função auxiliar para validar JID antes de chamar sendPresenceUpdate
 const isValidJid = (jid: string | undefined): boolean => {
   if (!jid) return false;
+  // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
   const normalizedJid = normalizeJid(jid);
-  return normalizedJid.includes('@s.whatsapp.net') || normalizedJid.includes('@g.us');
+  return normalizedJid.includes('@s.whatsapp.net') || normalizedJid.includes('@g.us') || normalizedJid.includes('@lid');
 };
 
 // Função auxiliar para chamar sendPresenceUpdate com validação
@@ -448,16 +449,23 @@ const getSenderMessage = (
 };
 
 const normalizeContactIdentifier = (msg: proto.IWebMessageInfo): string => {
-  // @ts-ignore: lid pode não estar definido no tipo, mas existe na versão mais recente
-  return normalizeJid(msg.key.lid || msg.key.remoteJid);
+  // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
+  const jid = msg.key.lid || msg.key.remoteJid;
+  return normalizeJid(jid);
 };
 
 const getContactMessage = async (msg: proto.IWebMessageInfo, wbot: Session) => {
   const isGroup = msg.key.remoteJid.includes("g.us");
   const rawNumber = msg.key.remoteJid.replace(/\D/g, "");
 
-  // Usa o identificador normalizado que considera o lid
-  // const normalizedId = normalizeContactIdentifier(msg);
+  // ✅ CORREÇÃO: Usar LID quando disponível para identificação correta do contato
+  const contactId = msg.key.lid || msg.key.remoteJid;
+
+  if (ENABLE_LID_DEBUG) {
+    logger.info(`[LID-DEBUG] getContactMessage - msg.key.lid: ${msg.key.lid}`);
+    logger.info(`[LID-DEBUG] getContactMessage - msg.key.remoteJid: ${msg.key.remoteJid}`);
+    logger.info(`[LID-DEBUG] getContactMessage - contactId usado: ${contactId}`);
+  }
 
   return isGroup
     ? {
@@ -465,7 +473,7 @@ const getContactMessage = async (msg: proto.IWebMessageInfo, wbot: Session) => {
       name: msg.pushName
     }
     : {
-      id: msg.key.remoteJid,
+      id: contactId,
       name: msg.key.fromMe ? rawNumber : msg.pushName
     };
 };
@@ -827,7 +835,7 @@ export const verifyMediaMessage = async (
         quotedMsgId: quotedMsg?.id || msg.message?.reactionMessage?.key?.id,
         ack: msg.status,
         companyId: companyId,
-        remoteJid: msg.key.remoteJid,
+        remoteJid: msg.key.lid || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
         participant: msg.key.participant,
         timestamp: getTimestampMessage(msg.messageTimestamp),
         createdAt: new Date(
@@ -979,7 +987,7 @@ export const verifyMediaMessage = async (
         Number(
           String(msg.status).replace("PENDING", "2").replace("NaN", "1")
         ) || 2,
-      remoteJid: msg.key.remoteJid,
+      remoteJid: msg.key.lid || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
       participant: msg.key.participant,
       dataJson: JSON.stringify(msg),
       ticketTrakingId: ticketTraking?.id,
@@ -1085,7 +1093,7 @@ export const verifyMessage = async (
     ack:
       Number(String(msg.status).replace("PENDING", "2").replace("NaN", "1")) ||
       2,
-    remoteJid: msg.key.remoteJid,
+    remoteJid: msg.key.lid || msg.key.remoteJid, // ✅ CORREÇÃO: Usar LID quando disponível
     participant: msg.key.participant,
     dataJson: JSON.stringify(msg),
     ticketTrakingId: ticketTraking?.id,
