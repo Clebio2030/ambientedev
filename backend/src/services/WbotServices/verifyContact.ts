@@ -186,6 +186,10 @@ export async function verifyContact(
         const pn = await store.getPNForLID(msgContact.id);
         if (pn) {
           number = pn.substring(0, pn.indexOf("@"));
+          // ✅ CORREÇÃO: Remover sufixo :0 que o Baileys adiciona ao PN
+          if (number.endsWith(':0')) {
+            number = number.substring(0, number.length - 2);
+          }
           if (ENABLE_LID_DEBUG) {
             console.log(`[LID-DEBUG] verifyContact - LID ${msgContact.id} mapeado para PN ${pn}, usando número ${number}`);
           }
