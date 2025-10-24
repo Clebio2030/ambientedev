@@ -13,6 +13,9 @@ import GetProfilePicUrl from "./GetProfilePicUrl";
 
 const lidUpdateMutex = new Mutex();
 
+// Constante para debug LID
+const ENABLE_LID_DEBUG = true;
+
 // Função auxiliar para criar mapeamento LID de forma segura
 const createLidMappingSafely = async (companyId: number, lid: string, contactId: number) => {
   try {
