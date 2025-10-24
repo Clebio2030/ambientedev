@@ -29,6 +29,7 @@ import TicketTraking from "../../models/TicketTraking";
 import CreateLogTicketService from "../TicketServices/CreateLogTicketService";
 import { ENABLE_LID_DEBUG } from "../../config/debug";
 import logger from "../../utils/logger";
+import { normalizeJid } from "../../utils";
 
 const fs = require("fs");
 
@@ -68,8 +69,56 @@ const sendMessage = async (
   ticket: Ticket,
   body: string
 ) => {
-  // ✅ CORREÇÃO: Sempre usar JID tradicional, nunca lid como destino
-  const jid = `${contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+  // ✅ CORREÇÃO: Usar LID quando disponível para evitar erro Bad MAC
+  let jid;
+  if (contact.lid && contact.lid !== "") {
+    jid = contact.lid;
+    if (ENABLE_LID_DEBUG) {
+      logger.info(`[LID-DEBUG] ChatBot - Usando LID do campo lid: ${jid}`);
+    }
+  } else if (contact.remoteJid && contact.remoteJid.includes("@lid")) {
+    // Extrair apenas o LID puro do remoteJid malformado
+    const lidMatch = contact.remoteJid.match(/^(\d+)@lid/);
+    if (lidMatch) {
+      jid = `${lidMatch[1]}@lid`;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] ChatBot - Extraindo LID puro do remoteJid: ${jid}`);
+      }
+    } else {
+      // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+      if (contact.remoteJid && contact.remoteJid.includes('@lid')) {
+        jid = contact.remoteJid;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] ChatBot - Usando remoteJid LID diretamente: ${jid}`);
+        }
+      } else {
+        // Fallback para JID tradicional se não conseguir extrair o LID
+        const cleanNumber = contact.number.replace(/@.*$/, '');
+        jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] ChatBot - Fallback para JID tradicional: ${jid}`);
+        }
+      }
+    }
+  } else {
+    // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+    if (contact.remoteJid && contact.remoteJid.includes('@lid')) {
+      jid = contact.remoteJid;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] ChatBot - Usando remoteJid LID diretamente: ${jid}`);
+      }
+    } else {
+      // Fallback para JID tradicional quando não há LID
+      const cleanNumber = contact.number.replace(/@.*$/, '');
+      jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] ChatBot - Usando JID tradicional: ${jid}`);
+      }
+    }
+  }
+
+  // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
+  jid = normalizeJid(jid);
 
   if (ENABLE_LID_DEBUG) {
     logger.info(`[LID-DEBUG] ChatBot - Enviando para JID tradicional: ${jid}`);

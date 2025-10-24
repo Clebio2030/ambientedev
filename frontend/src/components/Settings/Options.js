@@ -195,6 +195,7 @@ const [loadingCopyContactPrefix, setLoadingCopyContactPrefix] = useState(false);
   const { update: updatempaccesstoken } = useSettings();
   const { update: updatestripeprivatekey } = useSettings();
   const { update: updateasaastoken } = useSettings();
+  const { update: updateopenaitoken } = useSettings();
 
   const { update } = useCompanySettings();
 
@@ -247,6 +248,11 @@ const [loadingCopyContactPrefix, setLoadingCopyContactPrefix] = useState(false);
       const asaastokenType = oldSettings.find((s) => s.key === 'asaastoken');
       if (asaastokenType) {
         setasaastokenType(asaastokenType.value);
+      }
+
+      const openaitokenType = oldSettings.find((s) => s.key === 'openaikeyaudio');
+      if (openaitokenType) {
+        setopenaitokenType(openaitokenType.value);
       }
 
     }
@@ -379,6 +385,17 @@ async function handleCopyContactPrefix(value) {
     });
     toast.success('Operação atualizada com sucesso.');
     setLoadingasaastokenType(false);
+  }
+
+  async function handleChangeopenaitoken(value) {
+    setopenaitokenType(value);
+    setLoadingopenaitokenType(true);
+    await updateopenaitoken({
+      key: 'openaikeyaudio',
+      value,
+    });
+    toast.success('Chave OpenAI salva com sucesso.');
+    setLoadingopenaitokenType(false);
   }
 
   async function handleChangeUserRating(value) {
@@ -1483,6 +1500,32 @@ async function handleCopyContactPrefix(value) {
             : null}
         </Grid>
       </Grid>
+
+      {/* OPENAI API KEY - TRANSCRIÇÃO DE ÁUDIO */}
+      {isSuper() ? (
+        <Grid spacing={3} container style={{ marginBottom: 10 }}>
+          <Grid xs={12} sm={12} md={12} item>
+            <FormControl className={classes.selectContainer}>
+              <TextField
+                id='openaikeyaudio'
+                name='openaikeyaudio'
+                margin='dense'
+                label='Chave OpenAI (Transcrição de Áudio)'
+                variant='outlined'
+                type='password'
+                value={openaitokenType}
+                onChange={async (e) => {
+                  handleChangeopenaitoken(e.target.value);
+                }}
+                helperText="Chave da API OpenAI para transcrever áudios usando Whisper"
+              ></TextField>
+              <FormHelperText>
+                {loadingopenaitokenType && 'Salvando...'}
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+        </Grid>
+      ) : null}
 
       <Grid spacing={1} container>
         <Grid xs={12} sm={6} md={6} item>

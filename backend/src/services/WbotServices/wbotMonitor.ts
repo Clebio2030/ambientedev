@@ -4,7 +4,7 @@ import {
   Contact as BContact,
   isJidBroadcast,
   isJidStatusBroadcast,
-  isJidUser,
+  isLidUser,
 } from "@whiskeysockets/baileys";
 import * as Sentry from "@sentry/node";
 import fs from "fs";
@@ -133,7 +133,7 @@ const wbotMonitor = async (
       try {
         Promise.all(
           contacts.map(async contact => {
-            if (!isJidBroadcast(contact.id) && !isJidStatusBroadcast(contact.id) && isJidUser(contact.id)) {
+            if (!isJidBroadcast(contact.id) && !isJidStatusBroadcast(contact.id) && isLidUser(contact.id)) {
 
               const contactArray = {
                 'id': contact.id,

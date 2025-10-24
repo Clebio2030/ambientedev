@@ -402,19 +402,64 @@ const SendWhatsAppMedia = async ({
 
     const contactNumber = await Contact.findByPk(ticket.contactId);
 
+    // ✅ CORREÇÃO: Usar LID quando disponível para evitar erro Bad MAC
     let jid;
     if (contactNumber.lid && contactNumber.lid !== "") {
       jid = contactNumber.lid;
-    } else if (
-      contactNumber.remoteJid &&
-      contactNumber.remoteJid !== "" &&
-      contactNumber.remoteJid.includes("@")
-    ) {
-      jid = contactNumber.remoteJid;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMedia - Usando LID do campo lid: ${jid}`);
+      }
+    } else if (contactNumber.remoteJid && contactNumber.remoteJid.includes("@lid")) {
+      // Extrair apenas o LID puro do remoteJid malformado
+      const lidMatch = contactNumber.remoteJid.match(/^(\d+)@lid/);
+      if (lidMatch) {
+        jid = `${lidMatch[1]}@lid`;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMedia - Extraindo LID puro do remoteJid: ${jid}`);
+        }
+      } else {
+        // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+        if (contactNumber.remoteJid && contactNumber.remoteJid.includes('@lid')) {
+          jid = contactNumber.remoteJid;
+          if (ENABLE_LID_DEBUG) {
+            logger.info(`[LID-DEBUG] SendMedia - Usando remoteJid LID diretamente: ${jid}`);
+          }
+        } else {
+          // Fallback para JID tradicional se não conseguir extrair o LID
+          const cleanNumber = contactNumber.number.replace(/@.*$/, '');
+          jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+          jid = normalizeJid(jid);
+          if (ENABLE_LID_DEBUG) {
+            logger.info(`[LID-DEBUG] SendMedia - Fallback para JID tradicional: ${jid}`);
+          }
+        }
+      }
     } else {
-      jid = `${contactNumber.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+      // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+      if (contactNumber.remoteJid && contactNumber.remoteJid.includes('@lid')) {
+        jid = contactNumber.remoteJid;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMedia - Usando remoteJid LID diretamente: ${jid}`);
+        }
+      } else {
+        // Fallback para JID tradicional quando não há LID
+        const cleanNumber = contactNumber.number.replace(/@.*$/, '');
+        jid = `${cleanNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+        jid = normalizeJid(jid);
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMedia - Usando JID tradicional: ${jid}`);
+        }
+      }
     }
+
+    // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
     jid = normalizeJid(jid);
+
+    if (ENABLE_LID_DEBUG) {
+      logger.info(`[LID-DEBUG] SendMedia - Enviando para JID: ${jid}`);
+      logger.info(`[LID-DEBUG] SendMedia - Contact lid: ${contactNumber.lid}`);
+      logger.info(`[LID-DEBUG] SendMedia - Contact remoteJid: ${contactNumber.remoteJid}`);
+    }
 
     let sentMessage: WAMessage;
 
@@ -426,7 +471,7 @@ const SendWhatsAppMedia = async ({
       try {
         // sentMessage = await wbot.sendMessage(jid, options);
 
-        sentMessage = await wbot.sendMessage(getJidOf(ticket), options);
+        sentMessage = await wbot.sendMessage(jid, options);
       } catch (err1) {
         if (err1.message && err1.message.includes("senderMessageKeys")) {
           // const simpleOptions = { ...options } as any;
@@ -436,7 +481,7 @@ const SendWhatsAppMedia = async ({
 
           // sentMessage = await wbot.sendMessage(jid, simpleOptions);
 
-          sentMessage = await wbot.sendMessage(getJidOf(ticket), options);
+          sentMessage = await wbot.sendMessage(jid, options);
         } else {
           // const otherOptions = { ...options } as any;
           // if (otherOptions.contextInfo) {
@@ -444,12 +489,12 @@ const SendWhatsAppMedia = async ({
           // }
           // sentMessage = await wbot.sendMessage(jid, otherOptions);
 
-          sentMessage = await wbot.sendMessage(getJidOf(ticket), options);
+          sentMessage = await wbot.sendMessage(jid, options);
         }
       }
     } else {
       // sentMessage = await wbot.sendMessage(jid, options);
-      sentMessage = await wbot.sendMessage(getJidOf(ticket), options);
+      sentMessage = await wbot.sendMessage(jid, options);
     }
 
     await ticket.update({

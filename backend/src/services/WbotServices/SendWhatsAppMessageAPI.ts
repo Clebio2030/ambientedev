@@ -29,7 +29,56 @@ const SendWhatsAppMessage = async ({
   let options = {};
   const wbot = await getWbot(whatsappId);
 
-  const jid = contact.isGroup ? `${contact.number}@g.us` : contact.remoteJid;
+  // ✅ CORREÇÃO: Usar LID quando disponível para evitar erro Bad MAC
+  let jid;
+  if (contact.lid && contact.lid !== "") {
+    jid = contact.lid;
+    if (ENABLE_LID_DEBUG) {
+      logger.info(`[LID-DEBUG] SendMessageAPI - Usando LID do campo lid: ${jid}`);
+    }
+  } else if (contact.remoteJid && contact.remoteJid.includes("@lid")) {
+    // Extrair apenas o LID puro do remoteJid malformado
+    const lidMatch = contact.remoteJid.match(/^(\d+)@lid/);
+    if (lidMatch) {
+      jid = `${lidMatch[1]}@lid`;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMessageAPI - Extraindo LID puro do remoteJid: ${jid}`);
+      }
+    } else {
+      // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+      if (contact.remoteJid && contact.remoteJid.includes('@lid')) {
+        jid = contact.remoteJid;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMessageAPI - Usando remoteJid LID diretamente: ${jid}`);
+        }
+      } else {
+        // Fallback para JID tradicional se não conseguir extrair o LID
+        const cleanNumber = contact.number.replace(/@.*$/, '');
+        jid = contact.isGroup ? `${cleanNumber}@g.us` : contact.remoteJid;
+        if (ENABLE_LID_DEBUG) {
+          logger.info(`[LID-DEBUG] SendMessageAPI - Fallback para JID tradicional: ${jid}`);
+        }
+      }
+    }
+  } else {
+    // ✅ CORREÇÃO: Se o remoteJid contém @lid, usar diretamente
+    if (contact.remoteJid && contact.remoteJid.includes('@lid')) {
+      jid = contact.remoteJid;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMessageAPI - Usando remoteJid LID diretamente: ${jid}`);
+      }
+    } else {
+      // Fallback para JID tradicional quando não há LID
+      const cleanNumber = contact.number.replace(/@.*$/, '');
+      jid = contact.isGroup ? `${cleanNumber}@g.us` : contact.remoteJid;
+      if (ENABLE_LID_DEBUG) {
+        logger.info(`[LID-DEBUG] SendMessageAPI - Usando JID tradicional: ${jid}`);
+      }
+    }
+  }
+
+  // ✅ CORREÇÃO: normalizeJid agora trata LIDs corretamente
+  jid = normalizeJid(jid);
 
   if (ENABLE_LID_DEBUG) {
     logger.info(

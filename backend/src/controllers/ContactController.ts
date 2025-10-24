@@ -316,7 +316,17 @@ export const update = async (
 
   const schema = Yup.object().shape({
     name: Yup.string(),
-    number: Yup.string().matches(/^\d+(@lid)?$/, "ERR_CHECK_NUMBER"),
+    number: Yup.string().test(
+      "valid-number",
+      "ERR_CHECK_NUMBER",
+      function(value) {
+        if (!value) return true; // Permitir valores vazios
+        // Permitir números com caracteres especiais comuns em telefones
+        // e também LIDs (incluindo dois pontos para números como 556599981956:0)
+        const phoneRegex = /^[\d\s\-\(\)\+\.:]+(@lid)?$/;
+        return phoneRegex.test(value);
+      }
+    ),
     email: Yup.string().email("Invalid email"),
     birthDate: Yup.date()
       .nullable()

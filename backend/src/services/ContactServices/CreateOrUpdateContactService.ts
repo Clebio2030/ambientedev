@@ -46,6 +46,8 @@ interface ContactData {
   channel?: string;
   disableBot?: boolean;
   language?: string;
+  lid?: string;
+  remoteJid?: string;
 }
 
 export const updateContact = async (
@@ -90,9 +92,9 @@ const CreateOrUpdateContactService = async ({
   
   try {
     // Monta um remoteJid padrão quando não for informado
-    const fallbackRemoteJid = normalizeJid(
-      remoteJid || (isGroup ? `${number}@g.us` : `${number}@s.whatsapp.net`)
-    );
+    // ✅ CORREÇÃO: NÃO aplicar normalizeJid em LIDs
+    const rawRemoteJid = remoteJid || (isGroup ? `${number}@g.us` : `${number}@s.whatsapp.net`);
+    const fallbackRemoteJid = rawRemoteJid.includes('@lid') ? rawRemoteJid : normalizeJid(rawRemoteJid);
     let createContact = false;
     const publicFolder = path.resolve(__dirname, "..", "..", "..", "public");
     // const number = isGroup ? rawNumber : rawNumber.replace(/[^0-9]/g, "");
@@ -265,7 +267,7 @@ const CreateOrUpdateContactService = async ({
           channel,
           acceptAudioMessage:
             acceptAudioMessageContact === "enabled" ? true : false,
-          remoteJid: normalizeJid(newRemoteJid),
+          remoteJid: newRemoteJid.includes('@lid') ? newRemoteJid : normalizeJid(newRemoteJid),
           lid: lid || null, // Inclui o lid na criação
           profilePicUrl,
           urlPicture: "",
@@ -296,7 +298,7 @@ const CreateOrUpdateContactService = async ({
               await contact.update({ 
                 active: true,
                 profilePicUrl,
-                remoteJid: normalizeJid(newRemoteJid),
+                remoteJid: newRemoteJid.includes('@lid') ? newRemoteJid : normalizeJid(newRemoteJid),
                 lid: lid || null
               });
               
