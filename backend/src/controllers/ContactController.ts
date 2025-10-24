@@ -322,8 +322,8 @@ export const update = async (
       function(value) {
         if (!value) return true; // Permitir valores vazios
         // Permitir números com caracteres especiais comuns em telefones
-        // e também LIDs
-        const phoneRegex = /^[\d\s\-\(\)\+\.]+(@lid)?$/;
+        // e também LIDs (incluindo dois pontos para números como 556599981956:0)
+        const phoneRegex = /^[\d\s\-\(\)\+\.:]+(@lid)?$/;
         return phoneRegex.test(value);
       }
     ),
